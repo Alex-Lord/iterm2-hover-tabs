@@ -226,6 +226,11 @@ typedef NS_ENUM(NSInteger, iTermTabBarFlashState) {
 }
 
 - (void)setFlashing:(BOOL)flashing {
+    if (flashing &&
+        [_itermTabBarDelegate respondsToSelector:@selector(iTermTabBarHandleHoverFlash)] &&
+        [_itermTabBarDelegate iTermTabBarHandleHoverFlash]) {
+        return;
+    }
     flashing &= [_itermTabBarDelegate iTermTabBarShouldFlashAutomatically];
     DLog(@"Set flashing to %d", (int)flashing);
     if (flashing) {

@@ -25,6 +25,9 @@
 - (BOOL)iTermTabBarCanDragWindow;
 - (BOOL)iTermTabBarShouldHideBacking;
 @optional
+// Returns YES when the hover controller handles the reveal instead of fading
+// the entire tab bar (which would also hide the collapsed rail).
+- (BOOL)iTermTabBarHandleHoverFlash;
 - (void)iTermTabBarDidUpdateProgressBars;
 @end
 

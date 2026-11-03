@@ -1,3 +1,43 @@
+# iTerm2 Hover Tabs · 左侧标签自动收起
+
+基于 [iTerm2 3.7.3](https://github.com/gnachman/iTerm2/tree/v3.7.3) 的非官方定制版。
+
+- 左侧标签栏收起为 **20 点**宽；鼠标停留 **50 ms** 后展开，离开 **100 ms** 后收起。
+- 展开覆盖在终端上方，终端列数和内容宽度保持不变。
+- 保留原生标签颜色、Claude 状态颜色和终端配色。
+- 支持全屏、标签拖动、菜单操作及切换标签时短暂显示。
+- 修复重建感应区域时漏掉移出事件导致标签栏卡住的问题。
+
+## 下载与安装
+
+从 [Releases](https://github.com/Alex-Lord/iterm2-hover-tabs/releases) 下载 ZIP，解压后将应用放入 Applications。
+当前安装包适用于 **Apple Silicon / macOS 13+**，采用本地 ad-hoc 签名，未经过 Apple 公证。
+请先结束需要保留的终端任务并备份原版，再替换应用。macOS 如拦截，可在系统设置的“隐私与安全性”中按提示允许打开。
+
+在 iTerm2 设置中将 Tab Bar Location 设为 Left，并在 Advanced 中搜索 “Expand the left tab bar on hover” 设为 Yes。
+也可以在退出 iTerm2 后执行：
+
+```sh
+defaults write com.googlecode.iterm2 TabViewType -int 2
+defaults write com.googlecode.iterm2 LeftTabBarExpandsOnHover -bool true
+```
+
+官方更新会覆盖本定制功能。使用本版期间可关闭自动检查及自动安装：
+
+```sh
+defaults write com.googlecode.iterm2 SUEnableAutomaticChecks -bool false
+defaults write com.googlecode.iterm2 SUAutomaticallyUpdate -bool false
+```
+
+## 源码与验证
+
+源码及许可证保留自上游。构建方法和测试说明见 [tests/hover-tabs/README.txt](tests/hover-tabs/README.txt)。
+已验证完整 Development / Deployment 构建、31 项上游布局测试、独立状态与布局测试、AppKit 漏事件恢复测试，以及真实窗口的悬停、宽度和颜色表现。
+
+以下为上游项目说明。
+
+---
+
 <div align="center">
 
 # iTerm2

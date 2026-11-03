@@ -24,6 +24,9 @@ typedef struct {
     /// Tab bar dimensions
     CGFloat tabBarHeight;
     CGFloat leftTabBarWidth;
+    /// Optional hover overlay width. Zero preserves the normal layout.
+    /// Does not change the space reserved for terminal or status bar content.
+    CGFloat leftTabBarOverlayWidth;
 
     /// Toolbelt dimensions
     CGFloat toolbeltWidth;

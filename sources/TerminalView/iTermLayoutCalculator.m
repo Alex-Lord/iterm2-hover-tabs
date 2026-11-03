@@ -297,6 +297,15 @@ const int kLayoutTabPositionRight = 3;
 
     outputs.toolbeltFrame = [self toolbeltFrameWithInputs:inputs];
 
+    // Apply the overlay only after calculating every content frame. Hovering
+    // must not cause terminal reflow, status-bar movement, or toolbelt resizing.
+    if (inputs.leftTabBarOverlayWidth > 0) {
+        const CGFloat availableWidth = MAX(0, inputs.contentViewWidth -
+            (inputs.shouldShowToolbelt ? inputs.toolbeltWidth : 0));
+        outputs.tabBarFrame.size.width = MIN(availableWidth,
+            MAX(inputs.leftTabBarWidth, inputs.leftTabBarOverlayWidth));
+    }
+
     return outputs;
 }
 

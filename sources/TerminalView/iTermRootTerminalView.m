@@ -154,6 +154,8 @@ NS_CLASS_AVAILABLE_MAC(10_14)
     NSView *_workaroundView;  // 10.14 only. See issue 8701.
     iTermLayerBackedSolidColorView *_notchMask NS_AVAILABLE_MAC(12_0);
     iTermCompactProxyIconView *_compactProxyIconView;
+    iTermHoverTabBarController *_hoverTabBarController;
+    BOOL _lastHoverTabBarOverlayVisible;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect
@@ -166,6 +168,10 @@ NS_CLASS_AVAILABLE_MAC(10_14)
 
         self.autoresizesSubviews = YES;
         _leftTabBarPreferredWidth = round([iTermPreferences doubleForKey:kPreferenceKeyLeftTabBarWidth]);
+        __weak iTermRootTerminalView *weakSelf = self;
+        _hoverTabBarController = [[iTermHoverTabBarController alloc] initWithChangeHandler:^{
+            [weakSelf layoutSubviews];
+        }];
         [self setLeftTabBarWidthFromPreferredWidth];
 
         _backgroundImage = [[iTermImageView alloc] init];
@@ -305,6 +311,7 @@ NS_CLASS_AVAILABLE_MAC(10_14)
 
 - (void)advancedSettingsDidChange:(NSNotification *)notification NS_AVAILABLE_MAC(10_14) {
     [self updateBorderViews];
+    [self layoutSubviews];
 }
 
 - (void)setDelegate:(id<iTermRootTerminalViewDelegate>)delegate {
@@ -566,7 +573,9 @@ NS_CLASS_AVAILABLE_MAC(10_14)
 }
 
 - (void)viewDidMoveToWindow {
+    [super viewDidMoveToWindow];
     if (!self.window) {
+        [_hoverTabBarController configureWithView:self rect:NSZeroRect enabled:NO];
         return;
     }
     [self didChangeCompactness];
@@ -579,6 +588,7 @@ NS_CLASS_AVAILABLE_MAC(10_14)
             button.target = self.window;
         }
     }
+    [self layoutSubviews];
 }
 
 - (void)didChangeCompactness {
@@ -1208,6 +1218,10 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
 }
 
 - (BOOL)tabBarShouldBeVisibleWithAdditionalTabs:(int)numberOfAdditionalTabs {
+    if ([self usesHoverTabBar]) {
+        return [_delegate tabBarAlwaysVisible] ||
+            [self.tabView numberOfTabViewItems] + numberOfAdditionalTabs > 1;
+    }
     if (([_delegate anyFullScreen] || [_delegate enteringLionFullscreen]) &&
         ![iTermPreferences boolForKey:kPreferenceKeyShowFullscreenTabBar]) {
         DLog(@"Tabbar should not be visible because in full screen");
@@ -1346,7 +1360,7 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
     // Tab bar state
     inputs.tabBarVisible = [self tabBarShouldBeVisibleWithAdditionalTabs:0];
     inputs.tabBarOnLoan = _tabBarControlOnLoan;
-    inputs.tabBarFlashing = _tabBarControl.flashing;
+    inputs.tabBarFlashing = _tabBarControl.flashing && ![self usesHoverTabBar];
     inputs.tabBarShouldBeAccessory = [self tabBarShouldBeVisibleEvenWhenOnLoan];
     inputs.tabBarAccessoryOverlapsContent = [self.delegate rootTerminalViewFullScreenTabBarAccessoryOverlapsContent];
 
@@ -1487,6 +1501,12 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
     iTermLayoutInputs inputs = [self layoutInputsForWindow:thisWindow];
     inputs.tabBarVisible = YES;
     inputs.tabPosition = kLayoutTabPositionLeft;
+    // Reserve only the rail width. Expanding overlays the terminal so shells
+    // and full-screen TUIs never receive a resize just because of hovering.
+    if ([self usesHoverTabBar] && _hoverTabBarController.expanded) {
+        inputs.leftTabBarOverlayWidth =
+            [self leftTabBarWidthForPreferredWidth:MAX(180, _leftTabBarPreferredWidth)];
+    }
     iTermLayoutOutputs outputs = [iTermLayoutCalculator calculateLayoutWithInputs:inputs];
 
     // Apply tab bar frame and settings
@@ -1504,7 +1524,11 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
     [self updateDivisionViewAndWindowNumberLabel];
 
     // Handle left tab bar drag handle
-    [self updateLeftTabBarDragHandleForTabBarFrame:outputs.tabBarFrame];
+    if ([self usesHoverTabBar] && !_hoverTabBarController.expanded) {
+        [self removeVerticalTabBarDragHandle];
+    } else {
+        [self updateLeftTabBarDragHandleForTabBarFrame:outputs.tabBarFrame];
+    }
 }
 
 - (void)layoutSubviewsWithVisibleRightTabBarAndInlineToolbelt:(BOOL)showToolbeltInline forWindow:(NSWindow *)thisWindow {
@@ -1659,7 +1683,10 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
     }
 
     // Update the tab style.
-    [self.tabBarControl setDisableTabClose:!iTermAdvancedSettingsModel.tabCloseButtonsAlwaysVisible];
+    const BOOL compactHoverRail = [self usesHoverTabBar] && !_hoverTabBarController.expanded;
+    [self.tabBarControl setDisableTabClose:compactHoverRail || !iTermAdvancedSettingsModel.tabCloseButtonsAlwaysVisible];
+    [self.tabBarControl setTabsHaveCloseButtons:!compactHoverRail &&
+        [iTermPreferences boolForKey:kPreferenceKeyTabsHaveCloseButton]];
     if ([iTermPreferences boolForKey:kPreferenceKeyHideTabNumber]) {
         [self.tabBarControl setCellMinWidth:[iTermAdvancedSettingsModel minCompactTabWidth]];
     } else {
@@ -1680,8 +1707,22 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
     if (!_tabBarControlOnLoan) {
         [self.tabBarControl updateFlashing];
     }
+    const BOOL hoverEnabled = [self usesHoverTabBar] && [self tabBarShouldBeVisible];
+    if (hoverEnabled) {
+        [self.tabBarControl setAlphaValue:1 animated:NO];
+    }
+    [_hoverTabBarController configureWithView:self
+                                        rect:_tabBarBacking.frame
+                                     enabled:hoverEnabled];
     DLog(@"After:\n%@", [self iterm_recursiveDescription]);
     [self.delegate rootTerminalViewDidLayoutSubviews];
+    const BOOL overlayVisible = self.hoverTabBarOverlayVisible;
+    if (_lastHoverTabBarOverlayVisible != overlayVisible) {
+        _lastHoverTabBarOverlayVisible = overlayVisible;
+        if ([self.delegate respondsToSelector:@selector(rootTerminalViewDidChangeTabBarOverlay)]) {
+            [self.delegate rootTerminalViewDidChangeTabBarOverlay];
+        }
+    }
 }
 
 - (CGFloat)minimumTabBarWidth {
@@ -1711,12 +1752,22 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
 }
 
 - (void)setLeftTabBarWidthFromPreferredWidth {
-    _leftTabBarWidth = [self leftTabBarWidthForPreferredWidth:_leftTabBarPreferredWidth];
+    _leftTabBarWidth = [self usesHoverTabBar] ? MIN(20, MAX(0, NSWidth(self.bounds))) :
+        [self leftTabBarWidthForPreferredWidth:_leftTabBarPreferredWidth];
 }
 
 - (void)willShowTabBar {
-    _leftTabBarWidth = [self leftTabBarWidthForPreferredWidth:_leftTabBarPreferredWidth
-                                                 contentWidth:self.bounds.size.width];
+    [self setLeftTabBarWidthFromPreferredWidth];
+}
+
+- (BOOL)usesHoverTabBar {
+    return [iTermAdvancedSettingsModel leftTabBarExpandsOnHover] &&
+        [iTermPreferences intForKey:kPreferenceKeyTabPosition] == PSMTab_LeftTab &&
+        !_tabBarControlOnLoan;
+}
+
+- (BOOL)hoverTabBarOverlayVisible {
+    return [self usesHoverTabBar] && _hoverTabBarController.expanded && [self tabBarShouldBeVisible];
 }
 
 #pragma mark - Status Bar Layout
@@ -1845,10 +1896,21 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
 #pragma mark - iTermTabBarControlViewDelegate
 
 - (BOOL)iTermTabBarShouldFlashAutomatically {
-    if (_tabBarControlOnLoan) {
+    if (_tabBarControlOnLoan || [self usesHoverTabBar]) {
         return NO;
     }
     return [_delegate iTermTabBarShouldFlashAutomatically];
+}
+
+- (BOOL)iTermTabBarHandleHoverFlash {
+    if (![self usesHoverTabBar]) {
+        return NO;
+    }
+    if ([_delegate anyFullScreen] &&
+        [iTermPreferences boolForKey:kPreferenceKeyFlashTabBarInFullscreen]) {
+        [_hoverTabBarController revealForDuration:[iTermAdvancedSettingsModel tabAutoShowHoldTime]];
+    }
+    return YES;
 }
 
 - (void)iTermTabBarWillBeginFlash {
@@ -1911,16 +1973,20 @@ static NSColor *iTermWindowBorderColorFromSetting(NSString *setting) {
 // For the left-side or right-side tab bar.
 - (CGFloat)dragHandleView:(iTermDragHandleView *)dragHandle didMoveBy:(CGFloat)delta {
     CGFloat originalValue = _leftTabBarPreferredWidth;
+    const CGFloat originalDisplayedWidth = NSWidth(_tabBarBacking.frame);
     const BOOL isRight = ([iTermPreferences intForKey:kPreferenceKeyTabPosition] == PSMTab_RightTab);
     const CGFloat signedDelta = isRight ? -delta : delta;
-    _leftTabBarPreferredWidth = round([self leftTabBarWidthForPreferredWidth:_leftTabBarPreferredWidth + signedDelta]);
+    const CGFloat baseWidth = [self usesHoverTabBar] ? MAX(180, _leftTabBarPreferredWidth) : _leftTabBarPreferredWidth;
+    const CGFloat desiredWidth = [self usesHoverTabBar] ? MAX(180, baseWidth + signedDelta) : baseWidth + signedDelta;
+    _leftTabBarPreferredWidth = round([self leftTabBarWidthForPreferredWidth:desiredWidth]);
     [self layoutSubviews];  // This may modify _leftTabBarWidth if it's too big or too small.
     [[iTermUserDefaults userDefaults] setDouble:_leftTabBarPreferredWidth
                                               forKey:kPreferenceKeyLeftTabBarWidth];
     // Return the handle's actual movement in window coordinates. For the
     // right-side tab bar the handle is on the bar's left edge, so it moves
     // opposite to the width change.
-    const CGFloat widthChange = _leftTabBarPreferredWidth - originalValue;
+    const CGFloat widthChange = [self usesHoverTabBar] ? NSWidth(_tabBarBacking.frame) - originalDisplayedWidth :
+        _leftTabBarPreferredWidth - originalValue;
     return isRight ? -widthChange : widthChange;
 }
 

@@ -12662,6 +12662,12 @@ static BOOL iTermApproximatelyEqualRects(NSRect lhs, NSRect rhs, double epsilon)
     }
 }
 
+- (void)rootTerminalViewDidChangeTabBarOverlay {
+    // Just like fullscreen tab flashing, the hover overlay must composite
+    // above the terminal. Restore Metal as soon as the overlay is dismissed.
+    [self updateUseMetalInAllTabs];
+}
+
 - (void)forceUpdateTitlebarSeparator NS_AVAILABLE_MAC(10_16) {
     NSTitlebarSeparatorStyle saved = self.window.titlebarSeparatorStyle;
     self.window.titlebarSeparatorStyle = (saved == NSTitlebarSeparatorStyleAutomatic) ? NSTitlebarSeparatorStyleNone : NSTitlebarSeparatorStyleAutomatic;
@@ -15161,7 +15167,7 @@ typedef NS_ENUM(NSUInteger, iTermBroadcastCommand) {
 }
 
 - (BOOL)tabCanUseMetal:(PTYTab *)tab reason:(out iTermMetalUnavailableReason *)reason {
-    if (_contentView.tabBarControl.flashing) {
+    if (_contentView.tabBarControl.flashing || _contentView.hoverTabBarOverlayVisible) {
         if (reason) {
             *reason = iTermMetalUnavailableReasonTabBarTemporarilyVisible;
         }

@@ -523,6 +523,7 @@ extern NSString *const iTermAdvancedSettingsDidChange;
 + (NSString *)sessionRestartedMessageText;
 + (NSString *)sessionFinishedMessageText;
 + (double)tabAutoShowHoldTime;
++ (BOOL)leftTabBarExpandsOnHover;
 + (NSString *)tabColorMenuOptions;
 + (double)tabFlashAnimationDuration;
 + (BOOL)tabsWrapAround;

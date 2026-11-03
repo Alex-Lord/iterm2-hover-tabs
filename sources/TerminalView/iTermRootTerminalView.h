@@ -71,6 +71,8 @@
 - (void)rootTerminalViewDidLayoutSubviews;
 - (NSString *)rootTerminalViewCurrentTabSubtitle;
 - (id<PSMPUAFontProvider>)rootTerminalViewPUAFontProvider;
+@optional
+- (void)rootTerminalViewDidChangeTabBarOverlay;
 @end
 
 extern const NSInteger iTermRootTerminalViewWindowNumberLabelMargin;
@@ -108,6 +110,7 @@ extern const NSInteger iTermRootTerminalViewWindowNumberLabelWidth;
 
 @property(nonatomic, readonly) BOOL tabBarShouldBeVisible;
 @property(nonatomic, readonly) BOOL tabBarShouldBeVisibleEvenWhenOnLoan;
+@property(nonatomic, readonly) BOOL hoverTabBarOverlayVisible;
 
 @property(nonatomic, readonly) CGFloat leftTabBarWidth;
 @property(nonatomic, readonly) CGFloat leftTabBarPreferredWidth;

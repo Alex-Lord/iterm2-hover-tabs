@@ -1,5 +1,9 @@
 Version 3.7.3
 
+Local Build:
+- Added an optional left tab bar that expands
+  on hover and collapses when the pointer exits.
+
 Bug Fixes:
 - Fixed the Python API not reporting OSC 8
   hyperlinks. A cell’s CellStyle.url is now

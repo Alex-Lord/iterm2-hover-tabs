@@ -309,6 +309,7 @@ DEFINE_INT(scrollableTabWidth, 120, SECTION_TABS @"Tab width when the tab bar is
 DEFINE_BOOL(moveLeftAfterClosingTab, NO, SECTION_TABS @"Select the tab to the left when closing a tab?\nIf disabled, the tab to the right of the closing tab will be selected.");
 DEFINE_BOOL(navigatePanesInReadingOrder, YES, SECTION_TABS @"Next Pane and Previous Pane commands use reading order, not the time of last use.");
 DEFINE_FLOAT(tabAutoShowHoldTime, 1.0, SECTION_TABS @"How long in seconds to show tabs in fullscreen.\nThe tab bar appears briefly in fullscreen when the number of tabs changes or you switch tabs. This setting gives the time in seconds for it to remain visible.");
+DEFINE_BOOL(leftTabBarExpandsOnHover, NO, SECTION_TABS @"Expand the left tab bar on hover?\nKeeps a narrow tab rail in windowed and fullscreen windows. Hover to reveal titles without resizing the terminal. Move away to collapse. Overrides hiding the entire tab bar in fullscreen; switching tabs can still reveal it briefly.");
 DEFINE_FLOAT(tabFlashAnimationDuration, 0.25, SECTION_TABS @"Animation duration for fade in/out animation of tabs in full screen, in seconds.")
 DEFINE_BOOL(allowDragOfTabIntoNewWindow, YES, SECTION_TABS @"Allow a tab to be dragged and dropped outside any existing tab bar to create a new window.");
 DEFINE_BOOL(allowDragOnAddTabButton, YES, SECTION_TABS @"Allow dragging window by the Add Tab button in the tab bar?");
